@@ -36,7 +36,7 @@ class RegisterController extends LSYii_Controller {
     */
     private $sMailMessage;
 
-    function actionAJAXRegisterForm($surveyid)
+    public function actionAJAXRegisterForm($surveyid)
     {
         Yii::app()->loadHelper('database');
         Yii::app()->loadHelper('replacements');
@@ -67,7 +67,7 @@ class RegisterController extends LSYii_Controller {
     * @param $aRegisterErrors array of errors when try to register
     * @return
     */
-    function actionIndex($sid = null)
+    public function actionIndex($sid = null)
     {
 
         if(!is_null($sid))
@@ -193,7 +193,11 @@ class RegisterController extends LSYii_Controller {
 
         $aReplacement['REGISTERERROR'] = $sRegisterError;
         $aReplacement['REGISTERMESSAGE1'] = $clang->gT("You must be registered to complete this survey");
-        $aReplacement['REGISTERMESSAGE2'] = $clang->gT("You may register for this survey if you wish to take part.")."<br />\n".$clang->gT("Enter your details below, and an email containing the link to participate in this survey will be sent immediately.");
+        if($sStartDate=$this->getStartDate($iSurveyId))
+            $aReplacement['REGISTERMESSAGE2'] = sprintf($clang->gT("You may register for this survey but you have to wait for the %s before starting the survey."),$sStartDate)."<br />\n".$clang->gT("Enter your details below, and an email containing the link to participate in this survey will be sent immediately.");
+        else
+            $aReplacement['REGISTERMESSAGE2'] = $clang->gT("You may register for this survey if you wish to take part.")."<br />\n".$clang->gT("Enter your details below, and an email containing the link to participate in this survey will be sent immediately.");
+
         $aData['thissurvey'] = $aSurveyInfo;
         Yii::app()->setConfig('surveyID',$iSurveyId);//Needed for languagechanger
         $aData['languagechanger'] = makeLanguageChangerSurvey($clang->langcode);
@@ -223,29 +227,20 @@ class RegisterController extends LSYii_Controller {
             $aReplacementFields["{".strtoupper($attribute)."}"]=$value;
         }
         $sToken=$oToken->token;
+        $useHtmlEmail = (getEmailFormat($iSurveyId) == 'html');
         $aMail['subject']=preg_replace("/{TOKEN:([A-Z0-9_]+)}/","{"."$1"."}",$aMail['subject']);
         $aMail['message']=preg_replace("/{TOKEN:([A-Z0-9_]+)}/","{"."$1"."}",$aMail['message']);
-        $surveylink = App()->createAbsoluteUrl("/survey/index/sid/{$iSurveyId}",array('lang'=>$sLanguage,'token'=>$sToken));
-        $optoutlink = App()->createAbsoluteUrl("/optout/tokens/surveyid/{$iSurveyId}",array('langcode'=>$sLanguage,'token'=>$sToken));
-        $optinlink = App()->createAbsoluteUrl("/optin/tokens/surveyid/{$iSurveyId}",array('langcode'=>$sLanguage,'token'=>$sToken));
-        if (getEmailFormat($iSurveyId) == 'html')
+        $aReplacementFields["{SURVEYURL}"] = App()->createAbsoluteUrl("/survey/index/sid/{$iSurveyId}",array('lang'=>$sLanguage,'token'=>$sToken));
+        $aReplacementFields["{OPTOUTURL}"] = App()->createAbsoluteUrl("/optout/tokens/surveyid/{$iSurveyId}",array('langcode'=>$sLanguage,'token'=>$sToken));
+        $aReplacementFields["{OPTINURL}"] = App()->createAbsoluteUrl("/optin/tokens/surveyid/{$iSurveyId}",array('langcode'=>$sLanguage,'token'=>$sToken));
+        foreach(array('OPTOUT', 'OPTIN', 'SURVEY') as $key)
         {
-            $useHtmlEmail = true;
-            $aReplacementFields["{SURVEYURL}"]="<a href='$surveylink'>".$surveylink."</a>";
-            $aReplacementFields["{OPTOUTURL}"]="<a href='$optoutlink'>".$optoutlink."</a>";
-            $aReplacementFields["{OPTINURL}"]="<a href='$optinlink'>".$optinlink."</a>";
+            $url = $aReplacementFields["{{$key}URL}"];
+            if ($useHtmlEmail)
+                $aReplacementFields["{{$key}URL}"] = "<a href='{$url}'>" . htmlspecialchars($url) . '</a>';
+            $aMail['subject'] = str_replace("@@{$key}URL@@", $url, $aMail['subject']);
+            $aMail['message'] = str_replace("@@{$key}URL@@", $url, $aMail['message']);
         }
-        else
-        {
-            $useHtmlEmail = false;
-            $aReplacementFields["{SURVEYURL}"]= $surveylink;
-            $aReplacementFields["{OPTOUTURL}"]= $optoutlink;
-            $aReplacementFields["{OPTINURL}"]= $optinlink;
-        }
-        // Allow barebone link for all URL
-        $aMail['message'] = str_replace("@@SURVEYURL@@", $surveylink, $aMail['message']);
-        $aMail['message'] = str_replace("@@OPTOUTURL@@", $optoutlink, $aMail['message']);
-        $aMail['message'] = str_replace("@@OPTINURL@@", $optinlink, $aMail['message']);
         // Replace the fields
         $aMail['subject']=ReplaceFields($aMail['subject'], $aReplacementFields);
         $aMail['message']=ReplaceFields($aMail['message'], $aReplacementFields);
@@ -304,7 +299,7 @@ class RegisterController extends LSYii_Controller {
     * @param $iSurveyId 
     * @return integer : the token id created
     */
-    private function getTokenId($iSurveyId)
+    public function getTokenId($iSurveyId)
     {
         $clang = Yii::app()->lang;
         $sLanguage=$clang->langcode;
@@ -363,7 +358,7 @@ class RegisterController extends LSYii_Controller {
     * @param $iSurveyId 
     * @return array : if email is set to sent (before SMTP problem)
     */
-    private function getFieldValue($iSurveyId)
+    public function getFieldValue($iSurveyId)
     {
         //static $aFiledValue; ?
         $sLanguage=Yii::app()->lang->langcode;
@@ -387,7 +382,7 @@ class RegisterController extends LSYii_Controller {
     * @param $iSurveyId 
     * @return array
     */
-    private function getExtraAttributeInfo($iSurveyId)
+    public function getExtraAttributeInfo($iSurveyId)
     {
         $sLanguage=Yii::app()->lang->langcode;
         $aSurveyInfo=getSurveyInfo($iSurveyId,$sLanguage);
@@ -400,6 +395,20 @@ class RegisterController extends LSYii_Controller {
             }
         }
         return $aRegisterAttributes;
+    }
+    /**
+    * Get the date if survey is future
+    * @param $iSurveyId 
+    * @return localized date
+    */
+    public function getStartDate($iSurveyId){
+        $aSurveyInfo=getSurveyInfo($iSurveyId,Yii::app()->lang->langcode);
+        if(empty($aSurveyInfo['startdate']) ||  dateShift(date("Y-m-d H:i:s"), "Y-m-d H:i:s", Yii::app()->getConfig("timeadjust"))>=$aSurveyInfo['startdate'])
+            return;
+        Yii::app()->loadHelper("surveytranslator");
+        $aDateFormat=getDateFormatData(getDateFormatForSID($iSurveyId,Yii::app()->lang->langcode),Yii::app()->lang->langcode);
+        $datetimeobj = new Date_Time_Converter($aSurveyInfo['startdate'], 'Y-m-d H:i:s');
+        return $datetimeobj->convert($aDateFormat['phpdate']);
     }
     /**
     * Display needed public page
