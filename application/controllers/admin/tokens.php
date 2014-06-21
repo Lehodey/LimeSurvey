@@ -2072,6 +2072,10 @@ class tokens extends Survey_Common_Action
                                 if (substr($value, 0, 1)=='"' && substr($value, -1)=='"')// Fix CSV quote
                                     $value = substr($value, 1, -1);
                             }
+                            // Some default value : to be moved to Token model rules in future release ?
+                            // But think we have to accept invalid email etc ... then use specific scenario
+                            $writearray['emailstatus']=isset($writearray['emailstatus'])?$writearray['emailstatus']:"OK";
+                            $writearray['language']=isset($writearray['language'])?$writearray['language']:$sBaseLanguage;
                             $oToken = Token::create($iSurveyId);
                             foreach ($writearray as $key => $value)
                             {

@@ -1,7 +1,8 @@
 /*
  * Google layer using Google Maps API
  * Copyright (c) 2011-2014, Pavel Shramov, Bruno Bergot
- * All rights reserved. 
+ * https://github.com/shramov/leaflet-plugins
+ * https://github.com/shramov/leaflet-plugins/blob/master/LICENSE
  */
 
 /* global google: true */
